@@ -12,77 +12,117 @@ namespace ConsoleApp2
     {
         static async Task Main(string[] args)
         {
-            // JSON verisini dinamik olarak oluştur
-            JObject jsonContent = new JObject();
-            jsonContent["startDate"] = "2024-05-01T00:00:00";
-            jsonContent["endDate"] = "2024-05-05T00:00:00";
-            jsonContent["pkAlias"] = "";
-            jsonContent["isUseDocDate"] = true;
-            jsonContent["cessionStatus"] = 0;
-            jsonContent["afterValue"] = 0;
-            jsonContent["limit"] = 100;
-            jsonContent["tenantIdentifierNumber"] = "";
+            // Token almak için kullanıcı bilgileri
+            var tokenUsername = "efatura@etfbilisim.com";
+            var tokenPassword = "RejrCwB3";
+            var grantType = "password";
 
-            // JSON verisini string'e dönüştür
-            string jsonString = jsonContent.ToString();
+            // Token almak için istek verisi
+            var tokenData = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("username", tokenUsername),
+                new KeyValuePair<string, string>("password", tokenPassword),
+                new KeyValuePair<string, string>("grant_type", grantType)
+            });
 
             // HttpClient oluştur
-            using (var client = new HttpClient())
+            using (var tokenClient = new HttpClient())
             {
-                // istek atacağım API adresini belirt
-                client.BaseAddress = new Uri("https://edocumentapi.mysoft.com.tr/api/InvoiceInbox/getNewInvoiceInboxWithHeaderInfoList");
+                // Token alacağımız API adresini belirt
+                tokenClient.BaseAddress = new Uri("https://edocumentapi.mysoft.com.tr/oauth/token");
 
-                // Bearer token'ı ekle
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue
-                    ("Bearer", "TUrMbfHt9uxJvfBvrsLAjdlWoe4pJl4_1vtuZJ6UMnd5EB1_kqdWeHjp8roOhIvpf008YHqxYCATImUtu6z_t_Pd_9KAO6Bxn808QR9S4Gu2LwFe2J1kPFtuOgDkSf433GtKBSqzl_bk_hfFiTKLqMnFt1HcUUdT6R9zf4gu1A6TAaBBEChfHLIFNaTRqRja-cOfGRCHUPgVIy_n-nUmiiQzCFOsuzuuXTpQdYQpou3S3_gOQF0NWICWvvOef2HKM80F_trqbZt2fSc8kqQHURxDVJOsZ7lUjBP6snBm5HNHA6fmA-dgczQaRbWwZoCuyBSO1OwvyWAADe8qIBBdkL0vzC_2tlh1kJwkuSZfA58fYAZ_Z32_O7qKSt2XQX97S0WNLTNiwNLEXhaJlALBHqFnKR8ntZ-8PtRP85F725ffPpnnanlaYV_9m75hXgCvRCDEmUYiIYMlGJGFVTdW0HxXif40WXFQqEWYX3avOYrgR-myWuAADa7YRm2wgDWk6VKaOWRH0w7MijizbthsKxjzcfjS_EskCQeX1f7LTdCLesscXxH7l0STvPpvwcM2xPRMjFNhZVQ6jaOWwjqsxQ4hmw49vhhzuXHQNRtBbVJ2QxV3VanN_RKkn6pXbEOkjhP4i2nFztoplFcJseR_V5pnE3-J84viDgmC3bYs01xQoiTgA3faDKOclYQRCOxYxxJNrIE3weEoYJFeYUmPptY7ql4SZdta4pWPLbR0nb6uBxrNzKWv8rokps10fRheFVejh1et8wzvnAWS7HU5t9jhGNY1lsxkWCdZeJzpBj4");
+                // Token alma isteği gönder
+                var tokenResponse = await tokenClient.PostAsync("", tokenData);
 
-                // JSON içeriğini HTTP içeriğine dönüştür
-                var content = new StringContent(jsonString, System.Text.Encoding.UTF8, "application/json");
+                // Yanıtı JSON olarak al
+                string tokenJson = await tokenResponse.Content.ReadAsStringAsync();
 
-                // PostAsync metodu ile isteği gönder ve cevabı al
-                var response = await client.PostAsync("", content);
+                // JSON yanıtını dinamik nesneye çevir
+                dynamic tokenObject = JObject.Parse(tokenJson);
 
-                // Sunucudan gelen yanıtı al
-                string responseJson = await response.Content.ReadAsStringAsync();
+                // Token'ı al
+                string accessToken = tokenObject.access_token;
 
-                // JSON verisini XML'e dönüştür
-                JObject jsonObject = JObject.Parse(responseJson);
-                XDocument xmlData = JsonConvert.DeserializeXNode(responseJson, "Root");
-
-                // Konsolda XML verisini göster
-               // Console.WriteLine(xmlData.ToString());
-
-                // XML verisini faturalar listesine dönüştür
-                List<Invoice> invoices = InvoiceHelper.ParseInvoices(xmlData);
-
-                // Faturaları işle veya görüntüle
-                foreach (var invoice in invoices)
+                // Token oluşturulduysa devam et
+                if (!string.IsNullOrEmpty(accessToken))
                 {
-                    Console.WriteLine($"Fatura No: {invoice.DocNo}");
-                    Console.WriteLine($"Profil: {invoice.Profile}");
-                    Console.WriteLine($"Fatura Durumu: {invoice.InvoiceStatusText}");
-                    Console.WriteLine($"Fatura Tipi: {invoice.InvoiceType}");
-                    Console.WriteLine($"ETTN: {invoice.Ettn}");
-                    Console.WriteLine($"Fatura Tarihi: {invoice.DocDate}");
-                    Console.WriteLine($"PK Alias: {invoice.PkAlias}");
-                    Console.WriteLine($"GB Alias: {invoice.GbAlias}");
-                    Console.WriteLine($"VKN/TCKN: {invoice.VknTckn}");
-                    Console.WriteLine($"Hesap Adı: {invoice.AccountName}");
-                    Console.WriteLine($"Satır Uzunluğu Tutarı: {invoice.LineExtensionAmount}");
-                    Console.WriteLine($"Vergi Hariç Tutar: {invoice.TaxExclusiveAmount}");
-                    Console.WriteLine($"Vergi Dahil Tutar: {invoice.TaxInclusiveAmount}");
-                    Console.WriteLine($"Ödenecek Yuvarlama Tutarı: {invoice.PayableRoundingAmount}");
-                    Console.WriteLine($"Ödenecek Tutar: {invoice.PayableAmount}");
-                    Console.WriteLine($"Toplam İndirim Tutarı: {invoice.AllowanceTotalAmount}");
-                    Console.WriteLine($"Toplam Vergi: {invoice.TaxTotalTra}");
-                    Console.WriteLine($"Para Birimi Kodu: {invoice.CurrencyCode}");
-                    Console.WriteLine($"Para Birimi Kuru: {invoice.CurrencyRate}");
-                    Console.WriteLine($"Oluşturulma Tarihi: {invoice.CreateDate}");
-                    Console.WriteLine($"Referans Anahtarı: {invoice.ReferenceKey}");
-                    Console.WriteLine();
-                }
+                    // JSON verisini dinamik olarak oluştur
+                    JObject jsonContent = new JObject();
+                    jsonContent["startDate"] = "2024-05-01T00:00:00";
+                    jsonContent["endDate"] = "2024-05-05T00:00:00";
+                    jsonContent["pkAlias"] = "";
+                    jsonContent["isUseDocDate"] = true;
+                    jsonContent["cessionStatus"] = 0;
+                    jsonContent["afterValue"] = 0;
+                    jsonContent["limit"] = 100;
+                    jsonContent["tenantIdentifierNumber"] = "";
 
-                Console.ReadLine();
+                    // JSON verisini string'e dönüştür
+                    string jsonString = jsonContent.ToString();
+
+                    // HttpClient oluştur
+                    using (var client = new HttpClient())
+                    {
+                        // istek atacağım API adresini belirt
+                        client.BaseAddress = new Uri("https://edocumentapi.mysoft.com.tr/api/InvoiceInbox/getInvoiceInboxWithHeaderInfoListForPeriod");
+
+                        // Bearer token'ı ekle
+                        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue
+                            ("Bearer", accessToken);
+
+                        // JSON içeriğini HTTP içeriğine dönüştür
+                        var content = new StringContent(jsonString, System.Text.Encoding.UTF8, "application/json");
+
+                        // PostAsync metodu ile isteği gönder ve cevabı al
+                        var response = await client.PostAsync("", content);
+
+                        // Sunucudan gelen yanıtı al
+                        string responseJson = await response.Content.ReadAsStringAsync();
+
+                        // JSON verisini XML'e dönüştür
+                        JObject jsonObject = JObject.Parse(responseJson);
+                        XDocument xmlData = JsonConvert.DeserializeXNode(responseJson, "Root");
+
+                        // Konsolda XML verisini göster
+                        // Console.WriteLine(xmlData.ToString());
+
+                        // XML verisini faturalar listesine dönüştür
+                        List<Invoice> invoices = InvoiceHelper.ParseInvoices(xmlData);
+
+                        // Faturaları işle veya görüntüle
+                        foreach (var invoice in invoices)
+                        {
+                            Console.WriteLine($"Fatura No: {invoice.DocNo}");
+                            Console.WriteLine($"Profil: {invoice.Profile}");
+                            Console.WriteLine($"Fatura Durumu: {invoice.InvoiceStatusText}");
+                            Console.WriteLine($"Fatura Tipi: {invoice.InvoiceType}");
+                            Console.WriteLine($"ETTN: {invoice.Ettn}");
+                            Console.WriteLine($"Fatura Tarihi: {invoice.DocDate}");
+                            Console.WriteLine($"PK Alias: {invoice.PkAlias}");
+                            Console.WriteLine($"GB Alias: {invoice.GbAlias}");
+                            Console.WriteLine($"VKN/TCKN: {invoice.VknTckn}");
+                            Console.WriteLine($"Hesap Adı: {invoice.AccountName}");
+                            Console.WriteLine($"Satır Uzunluğu Tutarı: {invoice.LineExtensionAmount}");
+                            Console.WriteLine($"Vergi Hariç Tutar: {invoice.TaxExclusiveAmount}");
+                            Console.WriteLine($"Vergi Dahil Tutar: {invoice.TaxInclusiveAmount}");
+                            Console.WriteLine($"Ödenecek Yuvarlama Tutarı: {invoice.PayableRoundingAmount}");
+                            Console.WriteLine($"Ödenecek Tutar: {invoice.PayableAmount}");
+                            Console.WriteLine($"Toplam İndirim Tutarı: {invoice.AllowanceTotalAmount}");
+                            Console.WriteLine($"Toplam Vergi: {invoice.TaxTotalTra}");
+                            Console.WriteLine($"Para Birimi Kodu: {invoice.CurrencyCode}");
+                            Console.WriteLine($"Para Birimi Kuru: {invoice.CurrencyRate}");
+                            Console.WriteLine($"Oluşturulma Tarihi: {invoice.CreateDate}");
+                            Console.WriteLine($"Referans Anahtarı: {invoice.ReferenceKey}");
+                            Console.WriteLine();
+                        }
+
+                        Console.ReadLine();
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Token alınamadı.");
+                }
             }
         }
     }
@@ -154,4 +194,3 @@ namespace ConsoleApp2
         }
     }
 }
-
