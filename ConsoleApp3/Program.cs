@@ -13,8 +13,8 @@ namespace ConsoleApp2
         static async Task Main(string[] args)
         {
             // Token almak için kullanıcı bilgileri
-            var tokenUsername = "efatura@etfbilisim.com";
-            var tokenPassword = "RejrCwB3";
+            var tokenUsername = "";
+            var tokenPassword = "";
             var grantType = "password";
 
             // Token almak için istek verisi
